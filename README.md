@@ -12,6 +12,7 @@ Daily feeding mechanism calculates the food intake, metabloizable energy, vitami
 **Project Structure**
 
 /Pig-Farm-Simulator
+
   ├── agent.py      # Defines the PigAgent class
   
   ├── model.py      # Defines the PigModel class
