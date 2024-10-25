@@ -13,10 +13,12 @@ Daily feeding mechanism calculates the food intake, metabloizable energy, vitami
 
 /Pig-Farm-Simulator
   ├── agent.py      # Defines the PigAgent class
+  
   ├── model.py      # Defines the PigModel class
+  
   ├── main.py       # For running the simulations with desired params
 
-#PigAgent Class: agent.py
+**PigAgent Class: agent.py**
 
 This file defines the PigAgent class, representing individual pig agents within the simulation. Each pig agent has various attributes, such as:
 
@@ -27,7 +29,7 @@ This file defines the PigAgent class, representing individual pig agents within 
 
 The agent’s step() method (to be fully implemented) will update these attributes based on growth and feeding calculations.
 
-#PigModel Class: model.py
+**PigModel Class: model.py**
 
 This file defines the PigModel class, which initializes the simulation environment, sets global variables, and manages the creation and tracking of pig agents:
 
@@ -37,7 +39,7 @@ This file defines the PigModel class, which initializes the simulation environme
 
 The step() method advances the model by one day (or step), where each pig’s growth and nutrient attributes are updated based on predefined equations and environmental factors.
 
-#Invoke the simulation: main.py
+**Invoke the simulation: main.py**
 
 This script serves as the entry point for running the simulation. Here, you can specify the number of gilts, barrows, and males, along with other parameters like initial weight and target sell weight. It initializes the PigModel and runs the simulation for a specified number of steps (days), tracking the evolution of the pig agents’ attributes over time.
 
