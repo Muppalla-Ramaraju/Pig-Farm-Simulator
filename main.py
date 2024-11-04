@@ -14,3 +14,8 @@ if __name__ == "__main__":
     # Collect the data
     data = model.datacollector.get_agent_vars_dataframe()
     print(data)
+
+
+
+
+    
