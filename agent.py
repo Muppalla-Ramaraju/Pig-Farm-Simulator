@@ -1,5 +1,3 @@
-# agent.py
-
 from mesa import Agent
 import random
 import math
@@ -44,17 +42,20 @@ class PigAgent(Agent):
         self.PBT = 0
         self.fat_free_lean = 0
         self.final_weight = 0
+
         self.Pd_by_energy_int = 0
+        # Initialize RAC-related attributes
+        self.RAC_day = 0  # Counter for the days of RAC feeding
+        self.RAC_level = model.RAC_level if hasattr(model, 'RAC_level') else 0  # Default to 0 if undefined
+        self.init_weight_rac = model.init_weight_rac if hasattr(model, 'init_weight_rac') else self.weight
 
     def step(self):
         """Simulate one step in the agent's life (feeding, growing, etc.)."""
         self.feed()
         self.gain_weight()
-        # Call log_info() to print details for debugging or analysis
-        #self.log_info()
-
+    
     def feed(self):
-        """Simulate the pig feeding."""
+        """Simulate the pig feeding based on type."""
         if self.pig_type == "gilt":
             self.feed_intake = self.weight * 0.05  # Simplified feed intake logic
         elif self.pig_type == "barrow":
@@ -64,44 +65,44 @@ class PigAgent(Agent):
 
     def gain_weight(self):
         """Calculate weight gain based on feed intake and energy requirements."""
-        # Simplified weight gain logic for now
-        self.weight_gain = self.feed_intake * 0.1
+        self.weight_gain = self.feed_intake * 0.1  # Simplified weight gain logic
         self.weight += self.weight_gain
 
         # Adjust body composition
-        self.BPm += self.weight_gain * 0.18  # Protein mass adjustment
-        self.BLm += self.weight_gain * 0.03  # Lipid mass adjustment
+        self.BPm += self.weight_gain * 0.18
+        self.BLm += self.weight_gain * 0.03
 
-        # If the pig exceeds the sell weight, remove it from the simulation
+        # Check if the pig should be sold if it exceeds the sell weight
         if self.weight >= self.model.sell_weight:
             self.model.schedule.remove(self)
-    
+
     def move(self):
         """Simulate the movement of the pig agent, keeping it within its assigned region."""
-        # Save the current region of the pig
-        current_region = self.region
+        region_start, region_end = self.region
+        x, y = self.pos
 
-        # Random movement logic
-        self.random.random_rotation(30)  # Turn randomly to the right
-        self.random.random_rotation(-30)  # Turn randomly to the left
-        self.advance(0.4)  # Move forward a small step
+        # Random movement within x bounds of the assigned region
+        new_x = min(max(x + random.choice([-1, 0, 1]), region_start), region_end)
+        new_y = min(max(y + random.choice([-1, 0, 1]), 0), self.model.grid.height - 1)
 
-        # Ensure the pig stays within the bounds of its region
-        self.keep_in_region(current_region)
+        self.model.grid.move_agent(self, (new_x, new_y))
 
-        # Check for boundary conditions on the y-coordinate
-        if self.pos[1] > self.model.grid.height - 1:
-            self.model.grid.move_agent(self, (self.pos[0], self.model.grid.height - 1))
-        elif self.pos[1] < 0:
-            self.model.grid.move_agent(self, (self.pos[0], 0))
+    def update_feed_intake(self):
+        """Update feed intake based on pig type and weight."""
+        if self.pig_type == "gilt":
+            self.feed_intake_es = 1.053 * self.ME_intake / self.model.ME_content
+            self.feed_intake = 2.755 * (1 - (math.exp(-math.exp(-4.755) * (self.weight ** 1.214))))
+        elif self.pig_type == "barrow":
+            self.feed_intake_es = 1.053 * self.ME_intake / self.model.ME_content
+            self.feed_intake = 2.88 * (1 - (math.exp(-math.exp(-5.921) * (self.weight ** 1.512))))
+        elif self.pig_type == "male":
+            self.feed_intake = 1.053 * self.ME_intake / self.model.ME_content
 
     def feed_g(self, stochastic_weight_gain):
-        # Calculate base weight gain using the given formula
         base_weight_gain = -0.0477 * self.weight ** 2 + 8.8503 * self.weight + 485.17
 
         # Check for stochastic weight gain
         if stochastic_weight_gain:
-            # Deviation from -20 to 20
             deviation = random.triangular(-20, 0, 20)
             self.weight_gain = base_weight_gain + deviation
         else:
@@ -109,112 +110,82 @@ class PigAgent(Agent):
 
         # Pd-max is the maximum value of Pd curve
         self.Pd_max = 149.9799
-        self.BP_at_Pd_max = 11.3016  # (Kg) Based on simulation (average of 10 times)
-        self.weight += self.weight_gain / 1000  # Convert weight gain to kg
+        self.BP_at_Pd_max = 11.3016  # (Kg)
+        self.weight += self.weight_gain / 1000  # Convert to kg
 
-        # BP-at-maturity and Rate constant calculations
-        self.BP_at_maturity = 2.7182 * self.BP_at_Pd_max  # (Kg)
+        # Calculations for body composition and ME intake
+        self.BP_at_maturity = 2.7182 * self.BP_at_Pd_max
         self.Rate_constant = 2.7182 * self.Pd_max / (self.BP_at_maturity * 1000)
-
-        # ME intake calculation (Kcal/day)
         self.ME_intake = 10967 * (1 - math.exp(-math.exp(-3.803) * self.weight ** 0.9072))
-
-        # Protein deposition (Pd) calculation (g/day)
         self.Prd = 137 * (0.7066 + 0.013289 * self.weight - 0.0001312 * self.weight ** 2 + 2.8627 * self.weight ** 3 * 10 ** -7)
 
-        # Update body protein mass (BPm)
-        self.BPm += self.Prd / 1000  # Convert Pd from g to kg
-
-        # Maximum Pd after Pd-max starts to decline
+        self.BPm += self.Prd / 1000
         self.maximum_pd_after_pd_max_start_decline = self.BPm * 1000 * self.Rate_constant * math.log(self.BP_at_maturity / self.BPm)
-
-        # Other body composition calculations
         self.Ash = 0.189 * self.BPm
-        self.Wat = (4.322 + 0.0044 * self.Pd_max) * (self.BPm ** 0.855)  # Assuming P = BPm
+        self.Wat = (4.322 + 0.0044 * self.Pd_max) * (self.BPm ** 0.855)
         self.LCT = 17.9 - (0.0375 * self.weight)
         self.Minimum_space_for_maximum_ME_intake = 0.0336 * self.weight ** 0.667
 
-        # Fraction of ME intake
-        T = 20  # Placeholder for environmental temperature
+        T = 20
         self.fraction_of_ME_intake = 1 - 0.012914 * (T - (self.LCT + 3)) - 0.001179 * (T - (self.LCT + 3)) ** 2
-
-        # Maximum daily feed intake (g/day)
         self.maximum_daily_feed_intake = 111 * (self.weight ** 0.803) * (1.00 + 0.025 * (self.LCT - T))
-
-        # Standard maintenance ME requirements (Kcal/day)
         self.standard_maintenance_ME_requirements = 197 * self.weight ** 0.60
 
-        # ME requirements for thermogenesis (Kcal/day)
-        self.ME_requirements_for_thermogenesis = 0.07425 * (self.LCT - T) * self.standard_maintenance_ME_requirements
-
-        # Maintenance ME requirements
         if T < self.LCT:
-            self.Maintenance_ME_requirements = self.standard_maintenance_ME_requirements + self.ME_requirements_for_thermogenesis
+            self.Maintenance_ME_requirements = self.standard_maintenance_ME_requirements + (0.07425 * (self.LCT - T) * self.standard_maintenance_ME_requirements)
         else:
             self.Maintenance_ME_requirements = self.standard_maintenance_ME_requirements
 
-        # Lipid deposition (Ld) calculation (g/day)
         self.Lid = (self.ME_intake - self.Maintenance_ME_requirements - (self.Prd * 10.6)) / 12.5
-
-        # Update body lipid mass (BLm)
-        self.BLm += self.Lid / 1000  # Convert Ld from g to kg
-
-        # Calculate EBW (Empty Body Weight)
+        self.BLm += self.Lid / 1000
         self.EBW = self.BPm + self.BLm + self.Wat + self.Ash
-
-        # Gut fill calculation
         self.Gut_fill = 0.3043 * self.EBW ** 0.5977
-
-        # Probe backfat thickness (PBT) calculation
         self.PBT = -5 + (12.3 * self.BLm / self.BPm) + (0.13 * self.BPm)
 
-        # Pd by energy intake calculation (g/day)
+        # Pd by energy intake (g/day)
         adjustment = 0.001
         self.Pd_by_energy_int = (30 + (21 + 20 * math.exp(-0.021 * self.weight))
                                 * (self.ME_intake - (1.3 * self.Maintenance_ME_requirements))
                                 * (self.Pd_max / 125) * (1 + 0.015 * (20 - T))) * adjustment
 
-        # Adjust maximum Pd
+        # Adjust maximum Pd based on Prd
         if self.Prd > self.Prd_1:
             self.maximum_Pd = self.Pd_max
         else:
             self.maximum_Pd = self.maximum_pd_after_pd_max_start_decline
 
-        # Update Prd_1 for the next step
         self.Prd_1 = self.Prd
 
         # Check if Ractopamine (RAC) is used
         if self.model.RAC:
             self.feed_rac()  # Call a separate method to handle RAC feeding
+
+        # Check if the pig should be sold
+        if self.weight > self.model.sell_weight:
+            self.final_weight = self.weight
+            self.fat_free_lean = (62.073 + 0.0308 * self.final_weight -
+                                1.0101 * self.PBT + 0.00774 * (self.PBT ** 2))
+            self.sell_pig()
     
+
     def feed_b(self, stochastic_weight_gain):
-        # Calculate base weight gain using the given formula
         base_weight_gain = -0.0765 * self.weight ** 2 + 14.162 * self.weight + 291.23
 
-        # Check for stochastic weight gain
         if stochastic_weight_gain:
-            # Generate deviation using random triangular distribution
             deviation = random.triangular(-20, 0, 20)
             self.weight_gain = base_weight_gain + deviation
         else:
             self.weight_gain = base_weight_gain
 
-        # Pd-max and other constants
         self.Pd_max = 145.3477
-        self.BP_at_Pd_max = 10.2483  # (Kg)
-        self.weight += self.weight_gain / 1000  # Convert weight gain to kg
+        self.BP_at_Pd_max = 10.2483
+        self.weight += self.weight_gain / 1000
 
-        # BP-at-maturity and Rate constant calculations
         self.BP_at_maturity = 2.7182 * self.BP_at_Pd_max
         self.Rate_constant = 2.7182 * self.Pd_max / (self.BP_at_maturity * 1000)
-
-        # ME intake calculation (Kcal/day)
         self.ME_intake = 10447 * (1 - math.exp(-math.exp(-4.283) * self.weight ** 1.0843))
-
-        # Protein deposition (Pd) calculation (g/day)
         self.Prd = 133 * (0.7078 + 0.013764 * self.weight - 0.00014211 * self.weight ** 2 + 3.2698 * self.weight ** 3 * 10 ** -7)
 
-        # Update body protein mass (BPm)
         self.BPm += self.Prd / 1000
 
         # Maximum Pd after Pd-max starts to decline
@@ -283,6 +254,13 @@ class PigAgent(Agent):
         # Check if Ractopamine (RAC) is used
         if self.model.RAC:
             self.feed_rac()  # Call a separate method to handle RAC feeding
+
+        # Check if the pig should be sold
+        if self.weight > self.model.sell_weight:
+            self.final_weight = self.weight
+            self.fat_free_lean = (62.073 + 0.0308 * self.final_weight -
+                                1.0101 * self.PBT + 0.00774 * (self.PBT ** 2))
+            self.sell_pig()
     
     def feed_m(self, stochastic_weight_gain):
         """Simulates feeding behavior for male pigs."""
@@ -378,6 +356,10 @@ class PigAgent(Agent):
         # Update Prd_1 for the next step
         self.Prd_1 = self.Prd
 
+        # Check if Ractopamine (RAC) is used
+        if self.model.RAC:
+            self.feed_rac()  # Call a separate method to handle RAC feeding
+
         # Check if the pig should be sold
         if self.weight > self.model.sell_weight:
             self.final_weight = self.weight
@@ -385,6 +367,16 @@ class PigAgent(Agent):
                                 1.0101 * self.PBT + 0.00774 * (self.PBT ** 2))
             self.sell_pig()  # Assuming there's a sell_pig method
     
+    def sell_pig(self):
+        """Handles actions when a pig reaches the sell weight."""
+        # Log or perform any necessary actions before selling
+        print(f"Selling pig with ID {self.unique_id}, final weight: {self.weight} kg")
+        
+        # Remove the pig from the simulation
+        self.model.schedule.remove(self)
+        self.model.num_sold += 1  # Increment sold count if you're tracking sales
+
+
     def feed_rac(self):
         """Simulates the effects of feeding Ractopamine (RAC) to pigs."""
         if self.RAC_day < 28:
@@ -486,3 +478,4 @@ def log_info(self):
     if self.pig_type == "male":
         print(f"RAC-day: {self.RAC_day}")
     print("\n")
+
