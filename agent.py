@@ -42,6 +42,8 @@ class PigAgent(Agent):
         self.PBT = 0
         self.fat_free_lean = 0
         self.final_weight = 0
+        # Initialize SID Lysine explicitly
+        self.SID_lys = 0  # Default value until calculated
 
         self.Pd_by_energy_int = 0
         # Initialize RAC-related attributes
@@ -49,12 +51,28 @@ class PigAgent(Agent):
         self.RAC_level = model.RAC_level if hasattr(model, 'RAC_level') else 0  # Default to 0 if undefined
         self.init_weight_rac = model.init_weight_rac if hasattr(model, 'init_weight_rac') else self.weight
 
+    
+    
+    
     def step(self):
         """Simulate one step in the agent's life (feeding, growing, etc.)."""
         self.feed()
         self.gain_weight()
+        self.calculate_sid_lys()
         self.log_info()
     
+
+    def calculate_sid_lys(self):
+        """Calculate SID-lys based on GIT loss and other parameters."""
+        GIT_lys_loss = self.feed_intake * (0.417 / 1000) * 0.88 * 1.1  # Digestive tract lysine loss
+        integ_lys_loss = 0.0045 * self.weight ** 0.75  # Lysine loss through integument
+        lys_in_Pd = self.Prd * 0.0710  # Lysine in protein deposition (example)
+
+        SID_lys_for_GIT = (GIT_lys_loss + integ_lys_loss) / (0.75 + 0.002 * (self.maximum_Pd - 147.7))
+        SID_lys_for_Pd = lys_in_Pd / (0.75 + (0.002 * (self.maximum_Pd - 147.7))) * (1 + 0.0547 + (0.002215 * self.weight))
+
+        self.SID_lys = SID_lys_for_GIT + SID_lys_for_Pd
+
     def feed(self):
         """Simulate the pig feeding based on type."""
         if self.pig_type == "gilt":
@@ -474,6 +492,7 @@ class PigAgent(Agent):
         print(f"My BL is: {round(self.BLm, 4)} kg")
         print(f"My Water is: {round(self.Wat, 4)} kg")
         print(f"My Ash is: {round(self.Ash, 4)} kg")
+        print(f"SID Lys: {round(self.SID_lys, 4)} g/day")
         print(f"My maintenance-ME-requirements is: {round(self.Maintenance_ME_requirements, 4)} g/day")
         print(f"My feed intake + wastage is: {round(self.feed_intake, 4)} kg")
         if self.pig_type == "male":

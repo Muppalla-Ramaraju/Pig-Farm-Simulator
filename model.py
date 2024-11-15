@@ -5,6 +5,8 @@ from mesa.datacollection import DataCollector
 from agent import PigAgent
 import random
 import math
+import pandas as pd
+
 
 
 class PigModel(Model):
@@ -27,16 +29,43 @@ class PigModel(Model):
         self.num_sold = 0
         self.RAC = RAC
 
+
+        # Tracked agents for plotting
+        self.tracked_agents = {"gilt": None, "barrow": None, "male": None}
+        self.tracked_data = {key: [] for key in self.tracked_agents}
+
         # Calculate region width based on the number of regions
         self.region_width = width // num_regions
 
         # Set up data collection
+        # Set up data collection
         self.datacollector = DataCollector(
-            agent_reporters={"Weight": "weight"}
+            agent_reporters={
+                "Weight": "weight",
+                "Weight Gain": "weight_gain",
+                "Pd": "Prd",
+                "Ld": "Lid",
+                "ME Intake": "ME_intake",
+                "Feed Intake": "feed_intake",
+                "SID Lys": "SID_lys",
+                "Maintenance ME": "Maintenance_ME_requirements",
+                "PBT": "PBT"
+            }
         )
 
-        # Initialize pigs in each region
+        # Initialize pigs in regions and assign tracked agents
         self.setup_pigs_in_regions(num_regions)
+        self.assign_tracked_agents()
+
+    def assign_tracked_agents(self):
+        """Randomly pick one gilt, one barrow, and one male for tracking."""
+        gilts = [agent for agent in self.schedule.agents if agent.pig_type == "gilt"]
+        barrows = [agent for agent in self.schedule.agents if agent.pig_type == "barrow"]
+        males = [agent for agent in self.schedule.agents if agent.pig_type == "male"]
+
+        self.tracked_agents["gilt"] = random.choice(gilts) if gilts else None
+        self.tracked_agents["barrow"] = random.choice(barrows) if barrows else None
+        self.tracked_agents["male"] = random.choice(males) if males else None
 
     def setup_pigs_in_regions(self, num_regions):
         """Create gilts, barrows, and males in each of the specified regions."""
@@ -64,33 +93,40 @@ class PigModel(Model):
     def step(self):
         """Advance the model by one step."""
         self.num_days += 1
-        # Move and feed pigs based on their type
+
+        # Move and feed pigs
         for agent in self.schedule.agents:
             agent.move()
             if agent.pig_type == "gilt":
-                agent.feed_g(stochastic_weight_gain=False)  # Set to True if random weight gain is desired
+                agent.feed_g(stochastic_weight_gain=False)
             elif agent.pig_type == "barrow":
                 agent.feed_b(stochastic_weight_gain=False)
             elif agent.pig_type == "male":
                 agent.feed_m(stochastic_weight_gain=False)
 
-        # Calculate total feed intake
-        self.total_feed_intake = sum(agent.feed_intake for agent in self.schedule.agents)
-        print(f"The total feed intake + wastage on day {self.num_days} for {self.num_pigs} pigs is {round(self.total_feed_intake, 4)} kg")
+        # Collect data for tracked agents
+        for gender, agent in self.tracked_agents.items():
+            if agent:
+                self.tracked_data[gender].append({
+                    "Day": self.num_days,
+                    "Weight": agent.weight,
+                    "Weight Gain": agent.weight_gain,
+                    "Pd": agent.Prd,
+                    "Ld": agent.Lid,
+                    "ME Intake": agent.ME_intake,
+                    "Feed Intake": agent.feed_intake,
+                    "SID Lys": agent.SID_lys,
+                    "Maintenance ME": agent.Maintenance_ME_requirements,
+                    "PBT": agent.PBT
+                })
 
         # Step schedule and collect data
         self.schedule.step()
         self.datacollector.collect(self)
 
-        
-
-        # Stop the simulation after a set number of days
+        # Stop simulation after a set number of days
         if self.num_days >= 140:
             self.running = False
-
-            # Stop the simulation after a set number of days
-            if self.num_days >= 140:
-                self.running = False
 
     '''def update_feed_intake(self):
         """Update feed intake for all pigs."""
@@ -118,3 +154,15 @@ class PigModel(Model):
     def sum_feed_intake(self, agents_list):
         """Calculate the total feed intake for a given list of agents."""
         return sum(agent.feed_intake for agent in agents_list)
+    
+    def save_tracked_data(self, filename="tracked_agents_data.csv"):
+        """Save tracked data to a CSV file."""
+        all_data = []
+        for gender, records in self.tracked_data.items():
+            for record in records:
+                record["Gender"] = gender
+                all_data.append(record)
+
+        df = pd.DataFrame(all_data)
+        df.to_csv(filename, index=False)
+        print(f"Tracked data saved to {filename}")

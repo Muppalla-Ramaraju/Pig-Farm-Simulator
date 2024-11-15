@@ -1,33 +1,37 @@
-# main.py
-
+import matplotlib.pyplot as plt
+import pandas as pd
 from model import PigModel
-from mesa.space import MultiGrid  # Import MultiGrid for the grid environment
+
+def plot_tracked_data(file="tracked_agents_data.csv"):
+    """Plot the tracked data for specified agents."""
+    df = pd.read_csv(file)
+    variables = [
+        "Weight", "Weight Gain", "Pd", "Ld",
+        "ME Intake", "Feed Intake", "SID Lys",
+        "Maintenance ME", "PBT"
+    ]
+
+    for var in variables:
+        plt.figure(figsize=(10, 6))
+        for gender in df["Gender"].unique():
+            agent_data = df[df["Gender"] == gender]
+            plt.plot(agent_data["Day"], agent_data[var], label=f"{gender.capitalize()}")
+        plt.title(f"{var} Over Time")
+        plt.xlabel("Day")
+        plt.ylabel(var)
+        plt.legend()
+        plt.grid()
+        plt.savefig(f"{var}_plot.png")
+        plt.show()
 
 if __name__ == "__main__":
-    # Define ME_content value
-    ME_content = 3000  # Adjust based on your requirements
+    ME_content = 3000  # Define ME content
 
-    # Create the model with ME_content
+    # Create and run the model
     model = PigModel(num_gilts=10, num_barrows=10, num_males=10, init_weight=20, sell_weight=130, ME_content=ME_content)
-
-    # Run the model steps
-    for i in range(100):
+    for i in range(100):  # Simulate for 100 days
         model.step()
 
-    # Collect the data
-    data = model.datacollector.get_agent_vars_dataframe()
-    print(data)
-
-    
-
-
-
-
-
-
-
-
-
-
-
-
+    # Save and plot tracked data
+    model.save_tracked_data()
+    plot_tracked_data("tracked_agents_data.csv")
