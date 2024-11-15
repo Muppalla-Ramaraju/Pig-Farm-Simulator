@@ -64,7 +64,6 @@ class PigModel(Model):
     def step(self):
         """Advance the model by one step."""
         self.num_days += 1
-
         # Move and feed pigs based on their type
         for agent in self.schedule.agents:
             agent.move()
@@ -82,6 +81,8 @@ class PigModel(Model):
         # Step schedule and collect data
         self.schedule.step()
         self.datacollector.collect(self)
+
+        
 
         # Stop the simulation after a set number of days
         if self.num_days >= 140:

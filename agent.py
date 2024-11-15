@@ -53,6 +53,7 @@ class PigAgent(Agent):
         """Simulate one step in the agent's life (feeding, growing, etc.)."""
         self.feed()
         self.gain_weight()
+        self.log_info()
     
     def feed(self):
         """Simulate the pig feeding based on type."""
@@ -462,20 +463,20 @@ class PigAgent(Agent):
         self.Linoleic_acid = -2.5883 + 1.1335 * math.log(self.weight)
 
     # In agent.py
-def log_info(self):
-    """Log detailed information about the pig."""
-    print(f"Hi, it's day {self.model.num_days} ******************************************************************************************************************************************")
-    print(f"My weight is: {round(self.weight, 4)} kg")
-    print(f"My ME intake + wastage is: {round(self.ME_intake, 4)} kcal/day")
-    print(f"My Pd is: {round(self.Prd, 4)} g/day")
-    print(f"My LD is: {round(self.Lid, 4)} g/day")
-    print(f"My BP is: {round(self.BPm, 4)} kg")
-    print(f"My BL is: {round(self.BLm, 4)} kg")
-    print(f"My Water is: {round(self.Wat, 4)} kg")
-    print(f"My Ash is: {round(self.Ash, 4)} kg")
-    print(f"My maintenance-ME-requirements is: {round(self.maintenance_ME_requirements, 4)} g/day")
-    print(f"My feed intake + wastage is: {round(self.feed_intake, 4)} kg")
-    if self.pig_type == "male":
-        print(f"RAC-day: {self.RAC_day}")
-    print("\n")
+    def log_info(self):
+        """Log detailed information about the pig."""
+        print(f"Hi, it's day {self.model.num_days} ******************************************************************************************************************************************")
+        print(f"My weight is: {round(self.weight, 4)} kg")
+        print(f"My ME intake + wastage is: {round(self.ME_intake, 4)} kcal/day")
+        print(f"My Pd is: {round(self.Prd, 4)} g/day")
+        print(f"My LD is: {round(self.Lid, 4)} g/day")
+        print(f"My BP is: {round(self.BPm, 4)} kg")
+        print(f"My BL is: {round(self.BLm, 4)} kg")
+        print(f"My Water is: {round(self.Wat, 4)} kg")
+        print(f"My Ash is: {round(self.Ash, 4)} kg")
+        print(f"My maintenance-ME-requirements is: {round(self.Maintenance_ME_requirements, 4)} g/day")
+        print(f"My feed intake + wastage is: {round(self.feed_intake, 4)} kg")
+        if self.pig_type == "male":
+            print(f"RAC-day: {self.RAC_day}")
+        print("\n")
 

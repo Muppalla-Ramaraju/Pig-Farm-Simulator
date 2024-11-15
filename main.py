@@ -18,7 +18,16 @@ if __name__ == "__main__":
     data = model.datacollector.get_agent_vars_dataframe()
     print(data)
 
-
-
-
     
+
+
+
+
+
+
+
+
+
+
+
+
