@@ -25,11 +25,11 @@ def plot_tracked_data(file="tracked_agents_data.csv"):
         plt.show()
 
 if __name__ == "__main__":
-    ME_content = 3000  # Define ME content
+    ME_content = 3600  # Define ME content
 
     # Create and run the model
-    model = PigModel(num_gilts=10, num_barrows=10, num_males=10, init_weight=20, sell_weight=130, ME_content=ME_content)
-    for i in range(100):  # Simulate for 100 days
+    model = PigModel(num_gilts=12, num_barrows=10, num_males=10, init_weight=20, sell_weight=130, ME_content=ME_content)
+    for i in range(130):  # Simulate for 100 days
         model.step()
 
     # Save and plot tracked data
@@ -38,3 +38,6 @@ if __name__ == "__main__":
 
 
     #Addign a line to demo the github
+
+    #time setting step func
+    #keep focusing from bw and bw_gain perspective

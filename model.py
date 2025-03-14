@@ -10,7 +10,7 @@ import pandas as pd
 
 
 class PigModel(Model):
-    def __init__(self, num_gilts, num_barrows, num_males, init_weight=20, sell_weight=130, ME_content=3000, width=20, height=20, num_regions=5, RAC=True):
+    def __init__(self, num_gilts, num_barrows, num_males, init_weight=0, sell_weight=0, ME_content=0, width=20, height=20, num_regions=5, RAC=True):
         super().__init__()
         self.ME_content = ME_content
         self.num_gilts = num_gilts
@@ -127,30 +127,7 @@ class PigModel(Model):
         # Stop simulation after a set number of days
         if self.num_days >= 140:
             self.running = False
-
-    '''def update_feed_intake(self):
-        """Update feed intake for all pigs."""
-        for agent in self.schedule.agents:
-            if agent.pig_type == "gilt":
-                agent.feed_intake_es = 1.053 * agent.ME_intake / agent.ME_content
-                agent.feed_intake = 2.755 * (1 - (math.exp(-math.exp(-4.755) * (agent.weight ** 1.214))))
-            elif agent.pig_type == "barrow":
-                agent.feed_intake_es = 1.053 * agent.ME_intake / agent.ME_content
-                agent.feed_intake = 2.88 * (1 - (math.exp(-math.exp(-5.921) * (agent.weight ** 1.512))))
-            elif agent.pig_type == "male":
-                agent.feed_intake = 1.053 * agent.ME_intake / agent.ME_content'''
-
-    '''def update_feed_intake(self):
-        """Update feed intake based on pig type and weight."""
-        if self.pig_type == "gilt":
-            self.feed_intake_es = 1.053 * self.ME_intake / self.model.ME_content  # Assuming `ME_content` is a model attribute
-            self.feed_intake = 2.755 * (1 - (math.exp(-math.exp(-4.755) * (self.weight ** 1.214))))
-        elif self.pig_type == "barrow":
-            self.feed_intake_es = 1.053 * self.ME_intake / self.model.ME_content
-            self.feed_intake = 2.88 * (1 - (math.exp(-math.exp(-5.921) * (self.weight ** 1.512))))
-        elif self.pig_type == "male":
-            self.feed_intake = 1.053 * self.ME_intake / self.model.ME_content'''
-
+            
     def sum_feed_intake(self, agents_list):
         """Calculate the total feed intake for a given list of agents."""
         return sum(agent.feed_intake for agent in agents_list)

@@ -60,6 +60,7 @@ class PigAgent(Agent):
         self.gain_weight()
         self.calculate_sid_lys()
         self.log_info()
+
     
 
     def calculate_sid_lys(self):
@@ -118,25 +119,31 @@ class PigAgent(Agent):
             self.feed_intake = 1.053 * self.ME_intake / self.model.ME_content
 
     def feed_g(self, stochastic_weight_gain):
-        base_weight_gain = -0.0477 * self.weight ** 2 + 8.8503 * self.weight + 485.17
+
+        base_weight_gain = (-0.0477 * self.weight ** 2 + 8.8503 * self.weight + 485.17) / 1000  # Convert to kg
 
         # Check for stochastic weight gain
         if stochastic_weight_gain:
-            deviation = random.triangular(-20, 0, 20)
+            deviation = random.triangular(-20, 0, 20) / 1000  # Convert deviation to kg
             self.weight_gain = base_weight_gain + deviation
         else:
             self.weight_gain = base_weight_gain
 
+        # Update the weight
+        #self.weight += self.weight_gain
+
         # Pd-max is the maximum value of Pd curve
         self.Pd_max = 149.9799
         self.BP_at_Pd_max = 11.3016  # (Kg)
-        self.weight += self.weight_gain / 1000  # Convert to kg
+        self.weight += self.weight_gain  # Convert to kg
 
         # Calculations for body composition and ME intake
         self.BP_at_maturity = 2.7182 * self.BP_at_Pd_max
         self.Rate_constant = 2.7182 * self.Pd_max / (self.BP_at_maturity * 1000)
         self.ME_intake = 10967 * (1 - math.exp(-math.exp(-3.803) * self.weight ** 0.9072))
-        self.Prd = 137 * (0.7066 + 0.013289 * self.weight - 0.0001312 * self.weight ** 2 + 2.8627 * self.weight ** 3 * 10 ** -7)
+        #self.Prd = 137 * (0.7066 + 0.013289 * self.weight - 0.0001312 * self.weight ** 2 + 2.8627 * self.weight ** 3 * 10 ** -7)
+        self.Prd = self.Pd_max / (1 + math.exp(-0.1 * (self.BPm - self.BP_at_Pd_max)))
+
 
         self.BPm += self.Prd / 1000
         self.maximum_pd_after_pd_max_start_decline = self.BPm * 1000 * self.Rate_constant * math.log(self.BP_at_maturity / self.BPm)
@@ -166,12 +173,25 @@ class PigAgent(Agent):
         self.Pd_by_energy_int = (30 + (21 + 20 * math.exp(-0.021 * self.weight))
                                 * (self.ME_intake - (1.3 * self.Maintenance_ME_requirements))
                                 * (self.Pd_max / 125) * (1 + 0.015 * (20 - T))) * adjustment
+        
+
 
         # Adjust maximum Pd based on Prd
         if self.Prd > self.Prd_1:
             self.maximum_Pd = self.Pd_max
         else:
             self.maximum_Pd = self.maximum_pd_after_pd_max_start_decline
+
+        if self.BPm > self.BP_at_Pd_max:
+            self.Prd = self.maximum_pd_after_pd_max_start_decline
+
+
+        # Update Pd using sigmoid function
+        if self.BPm <= self.BP_at_Pd_max:
+            self.Prd = self.Pd_max / (1 + math.exp(-0.1 * (self.BPm - self.BP_at_Pd_max)))
+        else:
+        # Gradual decline after peak
+            self.Prd = self.maximum_pd_after_pd_max_start_decline
 
         self.Prd_1 = self.Prd
 
@@ -200,11 +220,14 @@ class PigAgent(Agent):
         self.BP_at_Pd_max = 10.2483
         self.weight += self.weight_gain / 1000
 
+
+        
+
         self.BP_at_maturity = 2.7182 * self.BP_at_Pd_max
         self.Rate_constant = 2.7182 * self.Pd_max / (self.BP_at_maturity * 1000)
         self.ME_intake = 10447 * (1 - math.exp(-math.exp(-4.283) * self.weight ** 1.0843))
-        self.Prd = 133 * (0.7078 + 0.013764 * self.weight - 0.00014211 * self.weight ** 2 + 3.2698 * self.weight ** 3 * 10 ** -7)
-
+        #self.Prd = 133 * (0.7078 + 0.013764 * self.weight - 0.00014211 * self.weight ** 2 + 3.2698 * self.weight ** 3 * 10 ** -7)
+        self.Prd = self.Pd_max / (1 + math.exp(-0.1 * (self.BPm - self.BP_at_Pd_max)))
         self.BPm += self.Prd / 1000
 
         # Maximum Pd after Pd-max starts to decline
@@ -267,6 +290,17 @@ class PigAgent(Agent):
         else:
             self.maximum_Pd = self.maximum_pd_after_pd_max_start_decline
 
+        '''if self.BPm > self.BP_at_Pd_max:
+            self.Prd = self.maximum_pd_after_pd_max_start_decline'''
+
+        if self.BPm <= self.BP_at_Pd_max:
+            self.Prd = self.Pd_max / (1 + math.exp(-0.1 * (self.BPm - self.BP_at_Pd_max)))
+        else:
+        # Gradual decline after peak
+            self.Prd = self.maximum_pd_after_pd_max_start_decline
+
+
+
         # Update Prd_1 for the next step
         self.Prd_1 = self.Prd
 
@@ -307,13 +341,19 @@ class PigAgent(Agent):
         self.ME_intake = 10638 * (1 - math.exp(-math.exp(-3.803) * self.weight ** 0.9072))
 
         # Protein deposition (Pd) calculation (g/day)
-        self.Prd = 151 * (0.6558 + 0.012740 * self.weight - 0.00010390 * self.weight ** 2 + 1.64001 * self.weight ** 3 * 10 ** -7)
+        #self.Prd = 151 * (0.6558 + 0.012740 * self.weight - 0.00010390 * self.weight ** 2 + 1.64001 * self.weight ** 3 * 10 ** -7)
+        self.Prd = self.Pd_max / (1 + math.exp(-0.1 * (self.BPm - self.BP_at_Pd_max)))
+
 
         # Update body protein mass (BPm)
         self.BPm += self.Prd / 1000
 
         # Maximum Pd after Pd-max starts to decline
         self.maximum_pd_after_pd_max_start_decline = self.BPm * 1000 * self.Rate_constant * math.log(self.BP_at_maturity / self.BPm)
+
+        if self.BPm > self.BP_at_Pd_max:
+            self.Prd = self.maximum_pd_after_pd_max_start_decline
+
 
         # Calculate Ash and Wat
         self.Ash = 0.189 * self.BPm
@@ -371,6 +411,14 @@ class PigAgent(Agent):
             self.maximum_Pd = self.Pd_max
         else:
             self.maximum_Pd = self.maximum_pd_after_pd_max_start_decline
+
+        #marker
+
+        if self.BPm <= self.BP_at_Pd_max:
+            self.Prd = self.Pd_max / (1 + math.exp(-0.1 * (self.BPm - self.BP_at_Pd_max)))
+        else:
+        # Gradual decline after peak
+            self.Prd = self.maximum_pd_after_pd_max_start_decline
 
         # Update Prd_1 for the next step
         self.Prd_1 = self.Prd
