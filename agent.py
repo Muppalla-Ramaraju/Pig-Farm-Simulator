@@ -54,12 +54,12 @@ class PigAgent(Agent):
     
     
     
-    def step(self):
+    '''def step(self):
         """Simulate one step in the agent's life (feeding, growing, etc.)."""
         self.feed()
         self.gain_weight()
         self.calculate_sid_lys()
-        self.log_info()
+        self.log_info()'''
 
     
 
